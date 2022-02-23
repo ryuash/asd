@@ -4,7 +4,7 @@ PROTOC_GEN_TS_PATH="./node_modules/.bin/protoc-gen-ts"
 PROTOC_GEN_GRPC_PATH="./node_modules/.bin/grpc_tools_node_protoc_plugin"
 
 # Directory to write generated code to (.js and .d.ts files)
-OUT_DIR="parser/grpc/proto"
+OUT_DIR="server/grpc/proto"
 
 PROTO_DIR="proto"
 

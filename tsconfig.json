@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es6",
     "module": "commonjs",
-    "outDir": "dist/parser",
+    "outDir": "dist/server",
     "allowJs": true,
     "strict": true,
     "esModuleInterop": true,
@@ -13,16 +13,11 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@db": ["parser/db"],
-      "@config": ["parser/config.json"],
-      "@api": ["parser/api"],
-      "@utils": ["parser/utils"],
-      "@tests*": ["parser/tests/*"],
-      "@grpc/client": ["parser/grpc"],
-      "@proto*": ["parser/grpc/proto/*"],
+      "@grpc/client": ["server/grpc"],
+      "@proto*": ["server/grpc/proto/*"],
     }
   },
-  "include": ["parser/**/*"],
+  "include": ["server/**/*"],
   "exclude":[
     "dist",
     "node_modules"
