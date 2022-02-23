@@ -4,3 +4,10 @@ export type AccountBalanceRequestType = {
     height?: number;
   }
 }
+
+export type AccountDelegationRequestType = {
+  input: {
+    address: string;
+    height?: number;
+  }
+}
