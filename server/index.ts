@@ -360,7 +360,6 @@ app.post('/redelegation', async (req, res) => {
   });
 
   const data = await clientWithdrawalAddress(params);
-  console.log(data, 'data');
   const formattedStaking = R.pathOr([], ['redelegationResponsesList'], data).map((x) => ({
     delegator_address: R.pathOr('', ['redelegation', 'delegatorAddress'], x),
     validator_src_address: R.pathOr('', ['redelegation', 'validatorSrcAddress'], x),
