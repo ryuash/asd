@@ -22,3 +22,12 @@ export type DelegatorDelegationsRequestType = {
 }
 
 export type DelegationTotalRequestType = AccountType;
+
+export type DelegatorUnbondingRequestType = {
+  input: {
+    address: string;
+    offset?: number;
+    limit?: number;
+    count_total?: boolean;
+  }
+}

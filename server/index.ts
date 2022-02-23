@@ -7,7 +7,7 @@ import morgan from 'morgan';
 import { bankClient, stakingClient, distributionClient } from '@grpc/client';
 import { QueryAllBalancesRequest } from '@proto/cosmos/bank/v1beta1/query_pb';
 import { PageRequest } from '@proto/cosmos/base/query/v1beta1/pagination_pb';
-import { QueryDelegatorDelegationsRequest } from '@proto/cosmos/staking/v1beta1/query_pb';
+import { QueryDelegatorDelegationsRequest, QueryDelegatorUnbondingDelegationsRequest } from '@proto/cosmos/staking/v1beta1/query_pb';
 import {
   QueryDelegationTotalRewardsRequest,
   QueryDelegatorWithdrawAddressRequest,
@@ -20,6 +20,7 @@ import {
   ValidatorCommissionAmountRequestType,
   DelegatorDelegationsRequestType,
   DelegationTotalRequestType,
+  DelegatorUnbondingRequestType,
 } from './types';
 
 const app = express();
@@ -160,7 +161,6 @@ app.post('/delegation', async (req, res) => {
   });
 
   const data = await clientWithdrawalAddress(params);
-  console.log(data, 'data');
   const formattedDelegations = R.pathOr([], ['delegationResponsesList'], data).map((x) => ({
     delegator_address: R.pathOr('', ['delegation', 'delegatorAddress'], x),
     validator_address: R.pathOr('', ['delegation', 'validatorAddress'], x),
@@ -218,6 +218,62 @@ app.post('/delegation_total', async (req, res) => {
     })),
   };
   res.status(200).json(formatted);
+});
+
+app.post('/unbonding_delegation', async (req, res) => {
+  const body = req.body as DelegatorUnbondingRequestType;
+  const params = new QueryDelegatorUnbondingDelegationsRequest();
+  params.setDelegatorAddr(body.input.address);
+
+  const pageRequest = new PageRequest();
+  if (body.input.count_total) {
+    pageRequest.setCountTotal(false);
+  }
+
+  if (body.input.limit) {
+    pageRequest.setLimit(body.input.limit);
+  }
+
+  if (body.input.offset) {
+    pageRequest.setOffset(body.input.offset);
+  }
+
+  params.setPagination(pageRequest);
+
+  const clientWithdrawalAddress = (options: any) => new Promise((resolve, reject) => {
+    stakingClient.delegatorUnbondingDelegations(options, (error, response) => {
+      if (error) {
+        reject(error);
+      }
+      if (response) {
+        resolve(response.toObject());
+      }
+    });
+  });
+
+  const data = await clientWithdrawalAddress(params);
+
+  const formattedStaking = R.pathOr([], ['unbondingResponsesList'], data).map((x) => ({
+    delegator_address: R.pathOr('', ['delegatorAddress'], x),
+    validator_address: R.pathOr('', ['validatorAddress'], x),
+    entries: R.pathOr([], ['entriesList'], x).map((y) => ({
+      creation_height: R.pathOr('', ['creationHeight'], y),
+      completion_time: R.pathOr('', ['completionTime'], y), // need to fix
+      initial_balance: R.pathOr('', ['initialBalance'], y),
+      balance: R.pathOr('', ['balance'], y),
+    })),
+  }));
+
+  const format: any = {
+    unbonding_delegations: formattedStaking,
+  };
+
+  if (body.input.count_total) {
+    format.pagination = {
+      total: R.pathOr(0, ['pagination', 'total'], data),
+    };
+  }
+  res.status(200).json(format);
 });
 
 const init = async () => {
