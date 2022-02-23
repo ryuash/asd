@@ -20,3 +20,5 @@ export type DelegatorDelegationsRequestType = {
     count_total?: boolean;
   }
 }
+
+export type DelegationTotalRequestType = AccountType;

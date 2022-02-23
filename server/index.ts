@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import Big from 'big.js';
 import * as R from 'ramda';
 import express from 'express';
 import cors from 'cors';
@@ -18,6 +19,7 @@ import {
   AccountWithdrawalAddressRequestType,
   ValidatorCommissionAmountRequestType,
   DelegatorDelegationsRequestType,
+  DelegationTotalRequestType,
 } from './types';
 
 const app = express();
@@ -158,6 +160,7 @@ app.post('/delegation', async (req, res) => {
   });
 
   const data = await clientWithdrawalAddress(params);
+  console.log(data, 'data');
   const formattedDelegations = R.pathOr([], ['delegationResponsesList'], data).map((x) => ({
     delegator_address: R.pathOr('', ['delegation', 'delegatorAddress'], x),
     validator_address: R.pathOr('', ['delegation', 'validatorAddress'], x),
@@ -174,6 +177,47 @@ app.post('/delegation', async (req, res) => {
     };
   }
   res.status(200).json(format);
+});
+
+app.post('/delegation_total', async (req, res) => {
+  const body = req.body as DelegationTotalRequestType;
+  const params = new QueryDelegatorDelegationsRequest();
+  // fuck hope this doesnt break
+  params.setDelegatorAddr(body.input.address);
+
+  const clientWithdrawalAddress = (options: any) => new Promise((resolve, reject) => {
+    stakingClient.delegatorDelegations(options, (error, response) => {
+      if (error) {
+        reject(error);
+      }
+      if (response) {
+        resolve(response.toObject());
+      }
+    });
+  });
+
+  const data = await clientWithdrawalAddress(params);
+  const coins: any = {};
+
+  R.pathOr([], ['delegationResponsesList'], data).forEach((x) => {
+    const denom = R.pathOr('', ['balance', 'denom'], x);
+    const amount = R.pathOr('', ['balance', 'amount'], x);
+    if (coins[denom]) {
+      coins[denom] = Big(coins[denom]).add(amount).toPrecision();
+    } else {
+      coins[denom] = amount;
+    }
+  });
+
+  const denoms = R.keys(coins);
+
+  const formatted = {
+    coins: denoms.map((x) => ({
+      denom: x,
+      amount: coins[x],
+    })),
+  };
+  res.status(200).json(formatted);
 });
 
 const init = async () => {
