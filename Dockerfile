@@ -31,4 +31,4 @@ RUN npm run build
 EXPOSE 5000
 
 # Running the app
-CMD ["pm2-runtime", "dist/index.js"]
+CMD ["pm2-runtime", "npm start"]
