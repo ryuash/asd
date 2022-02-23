@@ -30,7 +30,7 @@ import {
 } from './types';
 
 const app = express();
-const { PORT } = process.env;
+const PORT = process.env.PORT || 5000;
 
 app.use(morgan('dev'));
 app.use(cors());
