@@ -8,7 +8,11 @@ import dayjs from '@utils/dayjs';
 import { bankClient, stakingClient, distributionClient } from '@grpc/client';
 import { QueryAllBalancesRequest } from '@proto/cosmos/bank/v1beta1/query_pb';
 import { PageRequest } from '@proto/cosmos/base/query/v1beta1/pagination_pb';
-import { QueryDelegatorDelegationsRequest, QueryDelegatorUnbondingDelegationsRequest } from '@proto/cosmos/staking/v1beta1/query_pb';
+import {
+  QueryDelegatorDelegationsRequest,
+  QueryDelegatorUnbondingDelegationsRequest,
+  QueryRedelegationsRequest,
+} from '@proto/cosmos/staking/v1beta1/query_pb';
 import {
   QueryDelegationTotalRewardsRequest,
   QueryDelegatorWithdrawAddressRequest,
@@ -22,6 +26,7 @@ import {
   DelegatorDelegationsRequestType,
   DelegationTotalRequestType,
   DelegatorUnbondingRequestType,
+  UnbondingTotalRequestType,
 } from './types';
 
 const app = express();
@@ -270,6 +275,107 @@ app.post('/unbonding_delegation', async (req, res) => {
 
   const format: any = {
     unbonding_delegations: formattedStaking,
+  };
+
+  if (body.input.count_total) {
+    format.pagination = {
+      total: R.pathOr(0, ['pagination', 'total'], data),
+    };
+  }
+  res.status(200).json(format);
+});
+
+app.post('/unbonding_delegation_total', async (req, res) => {
+  const body = req.body as UnbondingTotalRequestType;
+  const params = new QueryDelegatorUnbondingDelegationsRequest();
+  // fuck hope this doesnt break
+  params.setDelegatorAddr(body.input.address);
+
+  const clientWithdrawalAddress = (options: any) => new Promise((resolve, reject) => {
+    stakingClient.delegatorUnbondingDelegations(options, (error, response) => {
+      if (error) {
+        reject(error);
+      }
+      if (response) {
+        resolve(response.toObject());
+      }
+    });
+  });
+
+  const data = await clientWithdrawalAddress(params);
+  const coins: any = {};
+
+  R.pathOr([], ['unbondingResponsesList'], data).forEach((x) => {
+    R.pathOr([], ['entriesList'], x).forEach((y) => {
+      const amount = R.pathOr('0', ['balance'], y);
+      const denom = process.env.STAKE_DENOM as string;
+      if (coins[denom]) {
+        coins[denom] = Big(coins[denom]).add(amount).toPrecision();
+      } else {
+        coins[denom] = amount;
+      }
+    });
+  });
+
+  const denoms = R.keys(coins);
+
+  const formatted = {
+    coins: denoms.map((x) => ({
+      denom: x,
+      amount: coins[x],
+    })),
+  };
+  res.status(200).json(formatted);
+});
+
+app.post('/redelegation', async (req, res) => {
+  const body = req.body as DelegatorUnbondingRequestType;
+  const params = new QueryRedelegationsRequest();
+  params.setDelegatorAddr(body.input.address);
+
+  const pageRequest = new PageRequest();
+  if (body.input.count_total) {
+    pageRequest.setCountTotal(false);
+  }
+
+  if (body.input.limit) {
+    pageRequest.setLimit(body.input.limit);
+  }
+
+  if (body.input.offset) {
+    pageRequest.setOffset(body.input.offset);
+  }
+
+  params.setPagination(pageRequest);
+
+  const clientWithdrawalAddress = (options: any) => new Promise((resolve, reject) => {
+    stakingClient.redelegations(options, (error, response) => {
+      if (error) {
+        reject(error);
+      }
+      if (response) {
+        resolve(response.toObject());
+      }
+    });
+  });
+
+  const data = await clientWithdrawalAddress(params);
+  console.log(data, 'data');
+  const formattedStaking = R.pathOr([], ['redelegationResponsesList'], data).map((x) => ({
+    delegator_address: R.pathOr('', ['redelegation', 'delegatorAddress'], x),
+    validator_src_address: R.pathOr('', ['redelegation', 'validatorSrcAddress'], x),
+    validator_dst_address: R.pathOr('', ['redelegation', 'validatorDstAddress'], x),
+    entries: R.pathOr([], ['entriesList'], x).map((y) => {
+      const time = dayjs.utc(dayjs.unix(R.pathOr(0, ['redelegationEntry', 'completionTime', 'seconds'], y))).format('YYYY-MM-DDTHH:mm:ss');
+      return ({
+        completion_time: time,
+        balance: R.pathOr('', ['balance'], y),
+      });
+    }),
+  }));
+
+  const format: any = {
+    redelegations: formattedStaking,
   };
 
   if (body.input.count_total) {

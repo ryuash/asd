@@ -22,6 +22,7 @@ export type DelegatorDelegationsRequestType = {
 }
 
 export type DelegationTotalRequestType = AccountType;
+export type UnbondingTotalRequestType = AccountType;
 
 export type DelegatorUnbondingRequestType = {
   input: {
