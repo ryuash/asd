@@ -4,6 +4,7 @@ import * as R from 'ramda';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import dayjs from '@utils/dayjs';
 import { bankClient, stakingClient, distributionClient } from '@grpc/client';
 import { QueryAllBalancesRequest } from '@proto/cosmos/bank/v1beta1/query_pb';
 import { PageRequest } from '@proto/cosmos/base/query/v1beta1/pagination_pb';
@@ -256,12 +257,15 @@ app.post('/unbonding_delegation', async (req, res) => {
   const formattedStaking = R.pathOr([], ['unbondingResponsesList'], data).map((x) => ({
     delegator_address: R.pathOr('', ['delegatorAddress'], x),
     validator_address: R.pathOr('', ['validatorAddress'], x),
-    entries: R.pathOr([], ['entriesList'], x).map((y) => ({
-      creation_height: R.pathOr('', ['creationHeight'], y),
-      completion_time: R.pathOr('', ['completionTime'], y), // need to fix
-      initial_balance: R.pathOr('', ['initialBalance'], y),
-      balance: R.pathOr('', ['balance'], y),
-    })),
+    entries: R.pathOr([], ['entriesList'], x).map((y) => {
+      const time = dayjs.utc(dayjs.unix(R.pathOr(0, ['completionTime', 'seconds'], y))).format('YYYY-MM-DDTHH:mm:ss');
+      return ({
+        creation_height: R.pathOr('', ['creationHeight'], y),
+        completion_time: time,
+        initial_balance: R.pathOr('', ['initialBalance'], y),
+        balance: R.pathOr('', ['balance'], y),
+      });
+    }),
   }));
 
   const format: any = {
