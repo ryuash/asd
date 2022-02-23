@@ -7,8 +7,12 @@ import { bankClient, stakingClient, distributionClient } from '@grpc/client';
 import { QueryAllBalancesRequest } from '@proto/cosmos/bank/v1beta1/query_pb';
 import { PageRequest } from '@proto/cosmos/base/query/v1beta1/pagination_pb';
 import { QueryDelegatorDelegationsRequest } from '@proto/cosmos/staking/v1beta1/query_pb';
-import { QueryDelegationTotalRewardsRequest } from '@proto/cosmos/distribution/v1beta1/query_pb';
-import { AccountBalanceRequestType, AccountDelegationRequestType } from './types';
+import { QueryDelegationTotalRewardsRequest, QueryDelegatorWithdrawAddressRequest } from '@proto/cosmos/distribution/v1beta1/query_pb';
+import {
+  AccountBalanceRequestType,
+  AccountDelegationRequestType,
+  AccountWithdrawalAddressRequestType,
+} from './types';
 
 const app = express();
 const PORT = 5000;
@@ -66,6 +70,30 @@ app.post('/delegation_reward', async (req, res) => {
     validator_address: R.pathOr('', ['validatorAddress'], x),
     coins: R.pathOr([], ['rewardList'], x),
   }));
+
+  res.status(200).json(formatted);
+});
+
+app.post('/delegator_withdraw_address', async (req, res) => {
+  const body = req.body as AccountWithdrawalAddressRequestType;
+  const params = new QueryDelegatorWithdrawAddressRequest();
+  params.setDelegatorAddress(body.input.address);
+
+  const clientWithdrawalAddress = (options: any) => new Promise((resolve, reject) => {
+    distributionClient.delegatorWithdrawAddress(options, (error, response) => {
+      if (error) {
+        reject(error);
+      }
+      if (response) {
+        resolve(response.toObject());
+      }
+    });
+  });
+
+  const data = await clientWithdrawalAddress(params);
+  const formatted = {
+    address: R.pathOr('', ['withdrawAddress'], data),
+  };
 
   res.status(200).json(formatted);
 });
